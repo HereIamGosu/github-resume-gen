@@ -1,18 +1,20 @@
+import { Skill } from "./skills";
+import { Project } from "./project";
+
 export interface ExportData {
-  skills: Record<string, number>
-  projects: { name: string; description: string }[]
+  skills: Skill[];
+  projects: Project[];
 }
 
 export interface ExportButtonsProps {
-  data: ExportData
-  username: string
-  design: string
+  data: ExportData;
+  username: string;
+  design: string;
 }
 
 export interface DesignConfig {
-  headerColor: string
-  subHeaderColor: string
-  textColor: string
-  accentColor: string
+  headerColor: string;
+  subHeaderColor: string;
+  textColor: string;
+  accentColor: string;
 }
-

@@ -1,19 +1,29 @@
-import * as React from "react"
+// use-mobile.tsx
+import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768
+const MOBILE_MAX_WIDTH = 768;
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = React.useState(false);
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
+    const mediaQuery = `(max-width: ${MOBILE_MAX_WIDTH - 1}px)`;
+    const mql = window.matchMedia(mediaQuery);
 
-  return !!isMobile
+    const handleMediaChange = (event: MediaQueryListEvent | MediaQueryList) => {
+      setIsMobile(event.matches);
+    };
+
+    // Инициализация при монтировании
+    handleMediaChange(mql);
+
+    // Добавление слушателя для современных браузеров
+    mql.addEventListener("change", handleMediaChange);
+
+    return () => {
+      mql.removeEventListener("change", handleMediaChange);
+    };
+  }, []);
+
+  return isMobile;
 }

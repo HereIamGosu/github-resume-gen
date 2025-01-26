@@ -1,25 +1,40 @@
-import "@/styles/globals.css"
-import { Inter } from "next/font/google"
+import { Inter } from "next/font/google";
+import type { Metadata } from "next";
+import "@/styles/globals.css";
 
-const inter = Inter({ subsets: ["latin"] })
+// 1. Конфигурация шрифта =============================================
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+});
 
-export const metadata = {
-  title: "AI Resume Generator",
-  description: "Generate your developer resume using GitHub data",
-}
+// 2. Метаданные ======================================================
+export const metadata: Metadata = {
+  title: {
+    default: "AI Resume Generator",
+    template: "%s | GitHub Resume",
+  },
+  description: "Generate professional developer resumes using GitHub data",
+  keywords: ["GitHub", "Resume", "Developer", "CV", "Portfolio"],
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://yourdomain.com",
+    siteName: "GitHub Resume Generator",
+  },
+};
 
+// 3. Основной лейаут =================================================
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className={inter.variable}>
+      <body className="min-h-screen antialiased">{children}</body>
     </html>
-  )
+  );
 }
-
-
-
-import './globals.css'

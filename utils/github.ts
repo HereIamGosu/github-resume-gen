@@ -1,35 +1,76 @@
-import { Octokit } from "@octokit/rest"
+// github.ts
+import { Octokit } from "@octokit/rest";
 
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
+// 1. Конфигурация и типы ==============================================
+type GitHubRepository = Awaited<ReturnType<typeof octokit.repos.listForUser>>["data"][0];
+type RepositoryLanguages = Awaited<ReturnType<typeof octokit.repos.listLanguages>>["data"];
 
-export async function fetchUserRepositories(username: string) {
+const API_CONFIG = {
+  defaults: {
+    perPage: 10,
+    sort: "updated" as const,
+  },
+  errors: {
+    tokenMissing: "GitHub token not configured",
+    base: "GitHub API request failed",
+  },
+} as const;
+
+// 2. Инициализация Octokit ============================================
+const getOctokitInstance = () => {
+  if (!process.env.GITHUB_TOKEN) throw new Error(API_CONFIG.errors.tokenMissing);
+  
+  return new Octokit({
+    auth: process.env.GITHUB_TOKEN,
+    userAgent: "GitHubResumeGenerator/1.0.0",
+    throttle: { enabled: true },
+  });
+};
+
+const octokit = getOctokitInstance();
+
+// 3. Базовый обработчик запросов ======================================
+async function handleGitHubRequest<T>(
+  operation: string,
+  request: () => Promise<T>,
+  context: string
+): Promise<T> {
   try {
-    console.log("Fetching repositories for user:", username)
-    const { data } = await octokit.repos.listForUser({
-      username,
-      sort: "updated",
-      per_page: 10,
-    })
-    console.log("Fetched repositories:", data.length)
-    return data
+    console.debug(`GitHub API: Starting ${operation}`);
+    const result = await request();
+    console.debug(`GitHub API: Completed ${operation}`);
+    return result;
   } catch (error) {
-    console.error("Error fetching repositories:", error)
-    throw new Error(`Failed to fetch repositories: ${error instanceof Error ? error.message : String(error)}`)
+    console.error(`GitHub API Error [${context}]:`, error);
+    throw new Error(
+      `${API_CONFIG.errors.base} - ${context}: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 }
 
-export async function fetchRepositoryLanguages(username: string, repo: string) {
-  try {
-    console.log("Fetching languages for repository:", repo)
-    const { data } = await octokit.repos.listLanguages({
+// 4. Сервисные функции ================================================
+export async function fetchUserRepositories(username: string): Promise<GitHubRepository[]> {
+  return handleGitHubRequest(
+    "fetchUserRepositories",
+    () => octokit.repos.listForUser({
+      username,
+      sort: API_CONFIG.defaults.sort,
+      per_page: API_CONFIG.defaults.perPage,
+    }).then(({ data }) => data),
+    `User: ${username}`
+  );
+}
+
+export async function fetchRepositoryLanguages(
+  username: string,
+  repo: string
+): Promise<RepositoryLanguages> {
+  return handleGitHubRequest(
+    "fetchRepositoryLanguages",
+    () => octokit.repos.listLanguages({
       owner: username,
       repo,
-    })
-    console.log("Fetched languages:", Object.keys(data).length)
-    return data
-  } catch (error) {
-    console.error("Error fetching languages:", error)
-    throw new Error(`Failed to fetch languages: ${error instanceof Error ? error.message : String(error)}`)
-  }
+    }).then(({ data }) => data),
+    `Repo: ${username}/${repo}`
+  );
 }
-

@@ -1,99 +1,173 @@
+// route.ts
 import { NextResponse } from "next/server"
 import { Octokit } from "@octokit/rest"
 
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
+// 1. Типы и интерфейсы ==============================================
+type GitHubRepository = Awaited<ReturnType<typeof octokit.repos.listForUser>>['data'][0]
 
-async function fetchUserRepositories(username: string) {
+interface RepositoryDetails {
+  languages: Record<string, number>
+  readme: string | null
+}
+
+interface ProjectDescription {
+  name: string
+  description: string
+}
+
+interface ErrorResponse {
+  error: string
+  details?: string
+}
+
+// 2. Конфигурация и константы =======================================
+const CACHE_TTL = 1000 * 60 * 5 // 5 минут
+const MAX_REPOS = 10
+const DEFAULT_TECH = 'Not specified'
+const DEFAULT_DESCRIPTION = 'No description provided'
+
+// 3. Инициализация Octokit ==========================================
+const octokit = new Octokit({ 
+  auth: process.env.GITHUB_TOKEN,
+  userAgent: 'GitHubResumeGenerator/1.0.0'
+})
+
+// 4. Кэширование с TTL ==============================================
+const repositoryCache = new Map<string, { data: RepositoryDetails; timestamp: number }>()
+
+const getCachedRepository = (key: string) => {
+  const cached = repositoryCache.get(key)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data
+  }
+  return null
+}
+
+// 5. Вспомогательные функции ========================================
+const normalizeUsername = (username: unknown): string => {
+  if (!username || typeof username !== 'string') {
+    throw new Error('Invalid username format')
+  }
+  return username.trim()
+}
+
+const handleApiError = (error: unknown, context: string): ErrorResponse => {
+  console.error(`[${context}] Error:`, error)
+  const message = error instanceof Error ? error.message : 'Unknown error'
+  return { error: `Failed to ${context}`, details: message }
+}
+
+// 6. Основные сервисные функции =====================================
+async function fetchUserRepositories(username: string): Promise<GitHubRepository[]> {
   try {
     const { data } = await octokit.repos.listForUser({
       username,
-      sort: "updated",
-      per_page: 10,
+      sort: 'updated',
+      per_page: MAX_REPOS,
     })
     return data
   } catch (error) {
-    console.error("Error fetching repositories:", error)
-    throw new Error(`Failed to fetch repositories: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`Repository fetch failed: ${(error as Error).message}`)
   }
 }
 
-async function fetchRepositoryDetails(username: string, repo: string) {
+async function fetchRepositoryDetails(
+  username: string,
+  repoName: string
+): Promise<RepositoryDetails> {
+  const cacheKey = `${username}/${repoName}`
+  const cachedData = getCachedRepository(cacheKey)
+  if (cachedData) return cachedData
+
   try {
-    const [languages, readme] = await Promise.all([
-      octokit.repos.listLanguages({ owner: username, repo }),
-      octokit.repos.getReadme({ owner: username, repo }).catch(() => null),
+    const [languagesResponse, readmeResponse] = await Promise.all([
+      octokit.repos.listLanguages({ owner: username, repo: repoName }),
+      octokit.repos.getReadme({ 
+        owner: username, 
+        repo: repoName 
+      }).catch(() => null),
     ])
 
-    return {
-      languages: languages.data,
-      readme: readme ? Buffer.from(readme.data.content, "base64").toString("utf-8") : null,
+    const details: RepositoryDetails = {
+      languages: languagesResponse.data,
+      readme: readmeResponse?.data 
+        ? Buffer.from(readmeResponse.data.content, 'base64').toString('utf-8')
+        : null,
     }
+
+    repositoryCache.set(cacheKey, { data: details, timestamp: Date.now() })
+    return details
   } catch (error) {
-    console.error(`Error fetching details for ${repo}:`, error)
+    console.error(`Failed to fetch details for ${repoName}:`, error)
     return { languages: {}, readme: null }
   }
 }
 
-function generateProjectDescription(project: any, details: { languages: any; readme: string | null }) {
-  const technologies = Object.keys(details.languages).join(", ")
-  const description = project.description || "No description provided"
-  const readmeExcerpt = details.readme
-    ? details.readme.split("\n").slice(0, 3).join("\n").trim()
-    : "No README available"
-
-  return `${project.name}: ${description}. Technologies used: ${technologies}. Key features: ${readmeExcerpt}`
+// 7. Генерация контента =============================================
+function generateReadmeExcerpt(readme: string | null): string {
+  if (!readme) return 'No README available'
+  return readme
+    .split('\n')
+    .slice(0, 3)
+    .join(' ')
+    .trim()
+    .replace(/\s+/g, ' ')
 }
 
-export async function POST(req: Request) {
-  try {
-    const { username } = await req.json()
+function buildProjectDescription(
+  project: GitHubRepository,
+  details: RepositoryDetails
+): ProjectDescription {
+  const technologies = Object.keys(details.languages).join(', ') || DEFAULT_TECH
+  const description = project.description?.replace(/\.$/, '') || DEFAULT_DESCRIPTION
 
-    if (!username) {
-      return NextResponse.json({ error: "Username is required" }, { status: 400 })
-    }
-
-    const repositories = await fetchUserRepositories(username)
-
-    if (repositories.length === 0) {
-      return NextResponse.json({ error: "No public repositories found for this user" }, { status: 404 })
-    }
-
-    const skillsData: Record<string, number> = {}
-    const projectDescriptions: { name: string; description: string }[] = []
-
-    for (const repo of repositories) {
-      const details = await fetchRepositoryDetails(username, repo.name)
-
-      Object.keys(details.languages).forEach((lang) => {
-        skillsData[lang] = (skillsData[lang] || 0) + 1
-      })
-
-      const description = generateProjectDescription(repo, details)
-      projectDescriptions.push({
-        name: repo.name,
-        description: description,
-      })
-    }
-
-    // Normalize skills data
-    const totalRepos = repositories.length
-    Object.keys(skillsData).forEach((skill) => {
-      skillsData[skill] = Math.round((skillsData[skill] / totalRepos) * 100)
-    })
-
-    return NextResponse.json({
-      skills: skillsData,
-      projects: projectDescriptions,
-    })
-  } catch (error) {
-    console.error("Error generating resume:", error)
-    return NextResponse.json(
-      {
-        error: "Failed to generate resume",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    )
+  return {
+    name: project.name,
+    description: `${project.name}: ${description}. Technologies: ${technologies}. Features: ${generateReadmeExcerpt(details.readme)}`
   }
 }
 
+// 8. Основной обработчик ============================================
+export async function POST(req: Request) {
+  try {
+    const { username } = await req.json()
+    const normalizedUsername = normalizeUsername(username)
+    
+    const repositories = await fetchUserRepositories(normalizedUsername)
+    if (repositories.length === 0) {
+      return NextResponse.json(
+        { error: 'No public repositories found' }, 
+        { status: 404 }
+      )
+    }
+
+    const skillsMap = new Map<string, number>()
+    const projects = await Promise.all(
+      repositories.map(async repo => {
+        const details = await fetchRepositoryDetails(normalizedUsername, repo.name)
+        Object.keys(details.languages).forEach(lang => {
+          skillsMap.set(lang, (skillsMap.get(lang) || 0) + 1)
+        })
+        return buildProjectDescription(repo, details)
+      })
+    )
+
+    const totalRepos = repositories.length
+    const normalizedSkills = Array.from(skillsMap).map(([skill, count]) => ({
+      skill,
+      percentage: Math.round((count / totalRepos) * 100)
+    }))
+
+    return NextResponse.json({
+      skills: Object.fromEntries(normalizedSkills.map(({ skill, percentage }) => [skill, percentage])),
+      projects
+    })
+
+  } catch (error) {
+    const { error: message, details } = handleApiError(error, 'generate resume')
+    return NextResponse.json(
+      { error: message, ...(details && { details }) },
+      { status: 500 }
+    )
+  }
+}

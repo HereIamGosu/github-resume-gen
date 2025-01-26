@@ -1,25 +1,80 @@
-import { Configuration, OpenAIApi } from "openai"
+// codestral.ts
+import OpenAI from "openai";
 
-const configuration = new Configuration({
-  apiKey: process.env.CODESTRAL_API_KEY,
-})
+// 1. Конфигурация и типы ==============================================
+const CODESTRAL_CONFIG = {
+  model: "codestral-latest",
+  maxTokens: 200, // Увеличено для более детальных описаний
+  promptTemplate: `Generate professional project description in Russian using this information:
+Name: {NAME}
+Technologies: {TECH}
+Project Structure: {STRUCTURE}
 
-const codestral = new OpenAIApi(configuration)
+Description should be 2-3 sentences highlighting:
+- Основное назначение проекта
+- Ключевые технологии и их применение
+- Особенности архитектуры
+- Любые уникальные характеристики`,
+  errors: {
+    missingKey: "CODESTRAL_API_KEY environment variable not set",
+    base: "Description generation failed",
+  },
+} as const;
 
-export async function analyzeCode(code: string) {
+type ProjectMetadata = {
+  name: string;
+  technologies: string[];
+  structure: string;
+};
+
+type AnalysisResult = string | undefined;
+
+// 2. Инициализация API клиента ========================================
+const initializeCodestral = () => {
+  if (!process.env.CODESTRAL_API_KEY) {
+    throw new Error(CODESTRAL_CONFIG.errors.missingKey);
+  }
+
+  return new OpenAI({
+    apiKey: process.env.CODESTRAL_API_KEY,
+  });
+};
+
+const codestral = initializeCodestral();
+
+// 3. Базовый обработчик запросов ======================================
+async function handleAnalysisRequest(metadata: ProjectMetadata): Promise<AnalysisResult> {
   try {
-    console.log("Analyzing code with Codestral")
-    const response = await codestral.createCompletion({
-      model: "codestral-latest",
-      prompt: `Analyze the following code and provide a summary of the technologies used and the main functionality:\n\n${code}`,
-      max_tokens: 150,
-    })
-    const analysis = response.data.choices[0].text?.trim()
-    console.log("Code analysis completed")
-    return analysis
+    const prompt = CODESTRAL_CONFIG.promptTemplate
+      .replace("{NAME}", metadata.name)
+      .replace("{TECH}", metadata.technologies.join(", "))
+      .replace("{STRUCTURE}", metadata.structure);
+
+    const response = await codestral.chat.completions.create({
+      model: CODESTRAL_CONFIG.model,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: CODESTRAL_CONFIG.maxTokens,
+    });
+
+    return response.choices[0]?.message?.content?.trim();
   } catch (error) {
-    console.error("Error analyzing code:", error)
-    throw new Error(`Failed to analyze code: ${error instanceof Error ? error.message : String(error)}`)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("Description generation error:", errorMessage);
+    throw new Error(`${CODESTRAL_CONFIG.errors.base}: ${errorMessage}`);
   }
 }
 
+// 4. Публичный API ====================================================
+export async function generateProjectDescription(
+  metadata: ProjectMetadata
+): Promise<AnalysisResult> {
+  try {
+    console.log("Generating project description for:", metadata.name);
+    const result = await handleAnalysisRequest(metadata);
+    console.log("Description generation successful");
+    return result;
+  } catch (error) {
+    console.error("Description generation pipeline failed");
+    throw error;
+  }
+}
