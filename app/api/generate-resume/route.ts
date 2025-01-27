@@ -14,6 +14,7 @@ interface RepositoryDetails {
 interface ProjectDescription {
   name: string
   description: string
+  htmlUrl?: string
 }
 
 interface ErrorResponse {
@@ -139,7 +140,8 @@ const buildProjectDescription = async (
 
   return {
     name: project.name,
-    description: `## ${project.name}\n\n${descriptionSections}`
+    description: `## ${project.name}\n\n${descriptionSections}`,
+    htmlUrl: project.html_url
   }
 }
 
@@ -154,9 +156,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No public repositories found' }, { status: 404 })
     }
 
-    const skillsMap = repositories.reduce((acc, _, index, arr) => {
-      const details = arr[index]
-      Object.keys(details.language || {}).forEach(lang => 
+    const skillsMap = repositories.reduce((acc, repo) => {
+      Object.keys(repo.language ? { [repo.language]: 1 } : {}).forEach(lang => 
         acc.set(lang, (acc.get(lang) || 0) + 1)
       )
       return acc
