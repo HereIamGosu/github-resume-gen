@@ -140,7 +140,7 @@ const buildProjectDescription = async (
 
   return {
     name: project.name,
-    description: `## ${project.name}\n\n${descriptionSections}`,
+    description: descriptionSections,
     htmlUrl: project.html_url
   }
 }

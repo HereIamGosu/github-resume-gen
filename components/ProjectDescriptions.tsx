@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, CodeIcon, GithubIcon } from "lucide-react";
 import type { Project } from "@/types/project";
@@ -11,109 +10,165 @@ import Link from "next/link";
 
 const STYLES = {
   container: "space-y-6",
-  heading: "text-2xl font-semibold mb-6 text-primary",
-  card: "relative group transition-all hover:shadow-lg dark:hover:bg-card/80",
-  content: "prose prose-sm dark:prose-invert max-w-none",
-  techBadge: "mr-2 mb-2 text-sm",
+  heading: "text-2xl font-semibold mb-6 text-primary border-b pb-2 border-border/50",
+  card: "flex flex-col h-full shadow-sm hover:shadow-lg transition-all duration-300 border border-border/20 bg-card/50 backdrop-blur-sm",
+  content: "prose prose-sm dark:prose-invert max-w-none text-foreground/90",
+  techBadge: "mr-2 mb-2 text-sm bg-accent/20 border border-border/30 rounded-lg px-3 py-1.5 shadow-sm",
   emptyState: "flex flex-col items-center justify-center py-12 space-y-4",
+  expandButton:
+    "mt-auto pt-4 w-full flex justify-center border-t border-border/20 bg-gradient-to-t from-background/80 via-background/50 to-transparent",
+  iconContainer: "flex items-center gap-2 text-muted-foreground/80 hover:text-primary transition-colors",
+  gradientBar: "absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 opacity-80",
 } as const;
 
-const MotionCard = motion(Card);
-
-const ProjectCard = ({ name, description, htmlUrl }: Project) => {
+const ProjectRow = ({ projects }: { projects: Project[] }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const hasLongDescription = description.length > 300;
-
-  // Парсим описание
-  const techMatch = description.match(/## Технологии\n([^#]+)/);
-  const technologies = techMatch?.[1].split(", ").filter(Boolean) || [];
-  const cleanDescription = description
-    .replace(/^# .+\n/, "") // Удаляем заголовок проекта
-    .replace(/## Технологии\n[^#]+/, "")
-    .replace(/\n{2,}/g, "\n");
 
   return (
-    <MotionCard
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={STYLES.card}
-    >
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CodeIcon className="h-5 w-5 text-muted-foreground" />
-            {name}
-          </CardTitle>
-          {hasLongDescription && (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-muted-foreground hover:text-primary"
-            >
-              {isExpanded ? (
-                <ChevronUp className="h-5 w-5" />
-              ) : (
-                <ChevronDown className="h-5 w-5" />
-              )}
-            </button>
-          )}
-        </div>
-
-        {technologies.length > 0 && (
-          <div className="flex flex-wrap mt-2">
-            {technologies.map((tech: string) => (
-              <Badge key={tech} variant="outline" className={STYLES.techBadge}>
-                {tech.trim()}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </CardHeader>
-
-      <CardContent>
-        <ScrollArea className={isExpanded ? "h-full" : "h-[200px]"}>
-          <div
-            className={STYLES.content}
-            dangerouslySetInnerHTML={{
-              __html: cleanDescription
-                .replace(
-                  /## (.*?)\n/g,
-                  '<h3 class="font-semibold mt-4 mb-2">$1</h3>'
-                )
-                .replace(/\n/g, "<br/>"),
-            }}
-          />
-        </ScrollArea>
-
-        {htmlUrl && (
-          <div className="flex items-center gap-4 mt-4">
-            <Link
-              href={htmlUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
-            >
-              <GithubIcon className="h-4 w-4" />
-              <span className="text-sm">View Code</span>
-            </Link>
-          </div>
-        )}
-      </CardContent>
-
-      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-    </MotionCard>
+    <div className="grid gap-6 md:grid-cols-2">
+      {projects.map((project) => (
+        <ProjectCard
+          key={project.name}
+          {...project}
+          isExpanded={isExpanded}
+          toggleExpand={() => setIsExpanded(!isExpanded)}
+        />
+      ))}
+    </div>
   );
 };
 
-export function ProjectDescriptions({ projects }: { projects: Project[] }) {
+const ProjectCard = ({
+  name,
+  description,
+  htmlUrl,
+  isExpanded,
+  toggleExpand,
+}: Project & {
+  isExpanded: boolean;
+  toggleExpand: () => void;
+}) => {
+  const techMatch = description.match(/## Технологии\n([^#]+)/);
+  const technologies = techMatch?.[1]?.split(", ").filter(Boolean) || [];
+
+  const cleanDescription = description
+    .replace(/^# .+\n/, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+
+  return (
+    <motion.div
+      layout
+      transition={{ duration: 0.2, type: "tween" }}
+      className="h-full"
+    >
+      <Card className={STYLES.card}>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CodeIcon className="h-5 w-5 text-muted-foreground" />
+              {name}
+              {htmlUrl && (
+                <Link
+                  href={htmlUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors ml-2"
+                  aria-label={`View ${name} on GitHub`}
+                >
+                  <GithubIcon className="h-5 w-5" />
+                </Link>
+              )}
+            </CardTitle>
+          </div>
+
+          {technologies.length > 0 && (
+            <div className="flex flex-wrap mt-2">
+              {technologies.map((tech) => (
+                <Badge
+                  key={tech}
+                  variant="outline"
+                  className={STYLES.techBadge}
+                >
+                  {tech.trim()}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardHeader>
+
+        <CardContent className="flex-1 relative">
+          <motion.div
+            animate={{
+              height: isExpanded ? "auto" : 100,
+              opacity: 1,
+            }}
+            initial={{ height: 100, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <div
+              className={STYLES.content}
+              dangerouslySetInnerHTML={{
+                __html: cleanDescription
+                  .replace(
+                    /## (Описание|Технологии|Детали реализации)/g,
+                    '<h3 class="font-semibold mt-4 mb-2 text-primary">$1</h3>'
+                  )
+                  .replace(/\n/g, "<br/>"),
+              }}
+            />
+          </motion.div>
+
+          {!isExpanded && (
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+          )}
+        </CardContent>
+
+        <div className={STYLES.expandButton}>
+          <button
+            onClick={toggleExpand}
+            className="w-full py-2 flex items-center justify-center gap-2 text-primary hover:bg-accent/20 transition-colors"
+            aria-label={isExpanded ? "Collapse section" : "Expand section"}
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-5 w-5" />
+                <span>Show Less</span>
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-5 w-5" />
+                <span>Show More</span>
+              </>
+            )}
+          </button>
+        </div>
+      </Card>
+    </motion.div>
+  );
+};
+
+export function ProjectDescriptions({
+  projects,
+}: {
+  projects: Project[];
+}): JSX.Element {
+  const projectRows = [];
+  for (let i = 0; i < projects.length; i += 2) {
+    projectRows.push(projects.slice(i, i + 2));
+  }
+
   return (
     <div className={STYLES.container}>
       <h2 className={STYLES.heading}>Featured Projects</h2>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {projects.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className={STYLES.emptyState}
           >
             <div className="text-center space-y-2">
@@ -125,9 +180,9 @@ export function ProjectDescriptions({ projects }: { projects: Project[] }) {
             </div>
           </motion.div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            {projects.map((project) => (
-              <ProjectCard key={project.name} {...project} />
+          <div className="space-y-6">
+            {projectRows.map((row, index) => (
+              <ProjectRow key={`row-${index}`} projects={row} />
             ))}
           </div>
         )}
