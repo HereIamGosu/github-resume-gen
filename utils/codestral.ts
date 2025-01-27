@@ -21,10 +21,10 @@ Description should be 2-3 sentences highlighting:
   },
 } as const;
 
-type ProjectMetadata = {
-  name: string;
-  technologies: string[];
-  structure: string;
+export type ProjectMetadata = {
+  name: string
+  technologies: string[]
+  structure: string
 };
 
 type AnalysisResult = string | undefined;
@@ -67,7 +67,7 @@ async function handleAnalysisRequest(metadata: ProjectMetadata): Promise<Analysi
 // 4. Публичный API ====================================================
 export async function generateProjectDescription(
   metadata: ProjectMetadata
-): Promise<AnalysisResult> {
+): Promise<string | undefined> {
   try {
     console.log("Generating project description for:", metadata.name);
     const result = await handleAnalysisRequest(metadata);
