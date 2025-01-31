@@ -1,8 +1,7 @@
-import { Skill } from "./skills";
 import { Project } from "./project";
 
 export interface ExportData {
-  skills: Skill[];
+  skills: Record<string, number>;
   projects: Project[];
 }
 

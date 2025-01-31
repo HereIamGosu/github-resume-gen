@@ -2,7 +2,7 @@ import { Inter } from "next/font/google";
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 
-// 1. Конфигурация шрифта =============================================
+// Конфигурация шрифта
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
@@ -10,7 +10,7 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
-// 2. Метаданные ======================================================
+// Метаданные
 export const metadata: Metadata = {
   title: {
     default: "AI Resume Generator",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
 };
 
-// 3. Основной лейаут =================================================
+// Основной лейаут
 export default function RootLayout({
   children,
 }: {

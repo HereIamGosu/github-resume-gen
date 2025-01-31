@@ -1,10 +1,12 @@
 // codestral.ts
+
 import OpenAI from "openai";
 
 // 1. Конфигурация и типы ==============================================
+
 const CODESTRAL_CONFIG = {
   model: "codestral-latest",
-  maxTokens: 200, // Увеличено для более детальных описаний
+  maxTokens: 200, // Увеличено для более детализированных описаний
   promptTemplate: `Generate professional project description in Russian using this information:
 Name: {NAME}
 Technologies: {TECH}
@@ -21,60 +23,54 @@ Description should be 2-3 sentences highlighting:
   },
 } as const;
 
+// Типы данных для метаданных проекта ===================================
+
 export type ProjectMetadata = {
-  name: string
-  technologies: string[]
-  structure: string
+  name: string;
+  technologies: string[];
+  structure: string;
 };
 
 type AnalysisResult = string | undefined;
 
 // 2. Инициализация API клиента ========================================
-const initializeCodestral = () => {
-  if (!process.env.CODESTRAL_API_KEY) {
+
+const initializeCodestral = (): OpenAI => {
+  const apiKey = process.env.CODESTRAL_API_KEY;
+
+  if (!apiKey) {
     throw new Error(CODESTRAL_CONFIG.errors.missingKey);
   }
 
-  return new OpenAI({
-    apiKey: process.env.CODESTRAL_API_KEY,
+  const openAIClient = new OpenAI({
+    apiKey: apiKey,
   });
+
+  return openAIClient;
 };
 
-const codestral = initializeCodestral();
+// 3. Функция для генерации описания проекта ==========================
 
-// 3. Базовый обработчик запросов ======================================
-async function handleAnalysisRequest(metadata: ProjectMetadata): Promise<AnalysisResult> {
+const generateProjectDescription = async (project: ProjectMetadata): Promise<AnalysisResult> => {
   try {
+    const openAIClient = initializeCodestral();
     const prompt = CODESTRAL_CONFIG.promptTemplate
-      .replace("{NAME}", metadata.name)
-      .replace("{TECH}", metadata.technologies.join(", "))
-      .replace("{STRUCTURE}", metadata.structure);
+      .replace("{NAME}", project.name)
+      .replace("{TECH}", project.technologies.join(", "))
+      .replace("{STRUCTURE}", project.structure);
 
-    const response = await codestral.chat.completions.create({
+    const response = await openAIClient.completions.create({
       model: CODESTRAL_CONFIG.model,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: CODESTRAL_CONFIG.maxTokens,
+      prompt: prompt,
+      max_tokens: CODESTRAL_CONFIG.maxTokens,  // Заменили maxTokens на max_tokens
     });
 
-    return response.choices[0]?.message?.content?.trim();
+    return response.choices[0]?.text?.trim();
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Description generation error:", errorMessage);
-    throw new Error(`${CODESTRAL_CONFIG.errors.base}: ${errorMessage}`);
+    console.error(CODESTRAL_CONFIG.errors.base, error);
+    return undefined;
   }
-}
+};
 
-// 4. Публичный API ====================================================
-export async function generateProjectDescription(
-  metadata: ProjectMetadata
-): Promise<string | undefined> {
-  try {
-    console.log("Generating project description for:", metadata.name);
-    const result = await handleAnalysisRequest(metadata);
-    console.log("Description generation successful");
-    return result;
-  } catch (error) {
-    console.error("Description generation pipeline failed");
-    throw error;
-  }
-}
+
+export default generateProjectDescription;

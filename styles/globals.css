@@ -29,17 +29,8 @@ body {
   @apply bg-background text-foreground;
 }
 
-@layer utilities {
-  .bg-gradient-to-t {
-    background-image: linear-gradient(to top, var(--tw-gradient-from), var(--tw-gradient-to));
-  }
-  
-  .from-background {
-    --tw-gradient-from: hsl(var(--background));
-    --tw-gradient-to: hsl(var(--background)/0);
-  }
-  
-  .to-transparent {
-    --tw-gradient-to: transparent;
+@layer components {
+  .design-button-container {
+    @apply relative overflow-hidden; /* Добавляем обрезку */
   }
 }

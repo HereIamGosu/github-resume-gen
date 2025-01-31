@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// 1. Константы и типы ================================================
+// Константы конфигурации формы
 const FORM_CONFIG = {
   input: {
     placeholder: "GitHub username",
@@ -24,14 +24,13 @@ const FORM_CONFIG = {
   },
 } as const;
 
-// 2. Основной компонент ==============================================
 export function GithubForm() {
   const [username, setUsername] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // 3. Валидация имени пользователя ==================================
-  const validateUsername = useCallback((value: string) => {
+  // Валидация имени пользователя
+  const validateUsername = useCallback((value: string): string | null => {
     const trimmed = value.trim();
 
     if (!trimmed) return "Username is required";
@@ -41,10 +40,23 @@ export function GithubForm() {
     if (!FORM_CONFIG.validation.pattern.test(trimmed)) {
       return "Invalid GitHub username format";
     }
-    return "";
+    return null;
   }, []);
 
-  // 4. Обработчик отправки формы =====================================
+  // Обработчик изменения ввода
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setUsername(value);
+
+      if (error) {
+        setError(validateUsername(value));
+      }
+    },
+    [error, validateUsername]
+  );
+
+  // Обработчик отправки формы
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
@@ -56,19 +68,6 @@ export function GithubForm() {
       setError(validationError);
     },
     [username, router, validateUsername]
-  );
-
-  // 5. Обработчик изменения ввода ====================================
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      setUsername(value);
-
-      if (error) {
-        setError(validateUsername(value));
-      }
-    },
-    [error, validateUsername]
   );
 
   return (

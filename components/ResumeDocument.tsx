@@ -1,4 +1,3 @@
-// ResumeDocument.tsx
 import {
   Document,
   Page,
@@ -9,7 +8,7 @@ import {
 } from "@react-pdf/renderer";
 import type { ExportData, DesignConfig } from "@/types/export";
 
-// Вынесение регистрации шрифта в отдельный модуль
+// Регистрация шрифта
 Font.register({
   family: "Roboto",
   src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-light-webfont.ttf",
@@ -39,7 +38,7 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
   );
 };
 
-// Вынесение секций в отдельные компоненты
+// Компонент для отображения заголовка
 const HeaderSection = ({
   username,
   styles,
@@ -52,6 +51,7 @@ const HeaderSection = ({
   </View>
 );
 
+// Компонент для отображения раздела "Skills"
 const SkillsSection = ({ data, styles }: { data: ExportData; styles: any }) => (
   <View style={styles.section}>
     <Text style={styles.subheader}>Skills</Text>
@@ -64,6 +64,7 @@ const SkillsSection = ({ data, styles }: { data: ExportData; styles: any }) => (
   </View>
 );
 
+// Компонент для отображения раздела "Projects"
 const ProjectsSection = ({
   data,
   styles,
@@ -84,6 +85,7 @@ const ProjectsSection = ({
   </View>
 );
 
+// Функция для создания стилей
 const createStyles = (designConfig: DesignConfig) =>
   StyleSheet.create({
     page: {

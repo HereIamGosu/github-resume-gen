@@ -2,75 +2,87 @@
 import { Octokit } from "@octokit/rest";
 
 // 1. Конфигурация и типы ==============================================
+
 type GitHubRepository = Awaited<ReturnType<typeof octokit.repos.listForUser>>["data"][0];
 type RepositoryLanguages = Awaited<ReturnType<typeof octokit.repos.listLanguages>>["data"];
 
 const API_CONFIG = {
   defaults: {
     perPage: 10,
-    sort: "updated" as const,
+    sort: "updated" as const, // Сортировка по обновлению
   },
   errors: {
-    tokenMissing: "GitHub token not configured",
-    base: "GitHub API request failed",
+    tokenMissing: "GitHub token not configured", // Ошибка при отсутствии токена
+    base: "GitHub API request failed", // Общая ошибка запроса
   },
 } as const;
 
 // 2. Инициализация Octokit ============================================
-const getOctokitInstance = () => {
-  if (!process.env.GITHUB_TOKEN) throw new Error(API_CONFIG.errors.tokenMissing);
-  
+
+/**
+ * Функция для создания экземпляра Octokit.
+ * @returns Экземпляр Octokit с авторизацией через токен.
+ * @throws Ошибка, если токен не настроен в переменных окружения.
+ */
+const getOctokitInstance = (): Octokit => {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    throw new Error(API_CONFIG.errors.tokenMissing);
+  }
+
   return new Octokit({
-    auth: process.env.GITHUB_TOKEN,
-    userAgent: "GitHubResumeGenerator/1.0.0",
-    throttle: { enabled: true },
+    auth: token,
+    userAgent: "GitHubResumeGenerator/1.0.0", // Уникальный идентификатор приложения
+    throttle: { enabled: true }, // Включение режима ограничения запросов
   });
 };
 
 const octokit = getOctokitInstance();
 
 // 3. Базовый обработчик запросов ======================================
-async function handleGitHubRequest<T>(
-  operation: string,
-  request: () => Promise<T>,
-  context: string
-): Promise<T> {
+
+/**
+ * Обработчик запроса для получения репозиториев пользователя на GitHub.
+ * @param username Имя пользователя на GitHub.
+ * @returns Список репозиториев пользователя.
+ */
+async function getRepositoriesForUser(username: string) {
   try {
-    console.debug(`GitHub API: Starting ${operation}`);
-    const result = await request();
-    console.debug(`GitHub API: Completed ${operation}`);
-    return result;
+    const response = await octokit.repos.listForUser({
+      username,
+      per_page: API_CONFIG.defaults.perPage,
+      sort: API_CONFIG.defaults.sort,
+    });
+    return response.data;
   } catch (error) {
-    console.error(`GitHub API Error [${context}]:`, error);
-    throw new Error(
-      `${API_CONFIG.errors.base} - ${context}: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
+    console.error(API_CONFIG.errors.base, error);
+    throw new Error(API_CONFIG.errors.base);
   }
 }
 
-// 4. Сервисные функции ================================================
-export async function fetchUserRepositories(username: string): Promise<GitHubRepository[]> {
-  return handleGitHubRequest(
-    "fetchUserRepositories",
-    () => octokit.repos.listForUser({
-      username,
-      sort: API_CONFIG.defaults.sort,
-      per_page: API_CONFIG.defaults.perPage,
-    }).then(({ data }) => data),
-    `User: ${username}`
-  );
+/**
+ * Обработчик запроса для получения языков программирования, используемых в репозиториях.
+ * @param username Имя пользователя на GitHub.
+ * @returns Объект с языками программирования, используемыми в репозиториях.
+ */
+async function getRepositoryLanguages(username: string) {
+  try {
+    const repositories = await getRepositoriesForUser(username);
+    const languages: RepositoryLanguages = {};
+
+    for (const repo of repositories) {
+      const repoLanguages = await octokit.repos.listLanguages({
+        owner: username,
+        repo: repo.name,
+      });
+      Object.assign(languages, repoLanguages.data);
+    }
+
+    return languages;
+  } catch (error) {
+    console.error(API_CONFIG.errors.base, error);
+    throw new Error(API_CONFIG.errors.base);
+  }
 }
 
-export async function fetchRepositoryLanguages(
-  username: string,
-  repo: string
-): Promise<RepositoryLanguages> {
-  return handleGitHubRequest(
-    "fetchRepositoryLanguages",
-    () => octokit.repos.listLanguages({
-      owner: username,
-      repo,
-    }).then(({ data }) => data),
-    `Repo: ${username}/${repo}`
-  );
-}
+export { getRepositoriesForUser, getRepositoryLanguages };

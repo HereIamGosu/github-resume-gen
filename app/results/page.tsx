@@ -117,13 +117,24 @@ export default function ResultsPage({
         <SkillsChart skills={resumeData!.skills} />
         <ProjectDescriptions projects={resumeData!.projects} />
 
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <DesignSelector onDesignChange={setSelectedDesign} />
-          <ExportButtonsWrapper
-            data={resumeData!}
-            username={username}
-            design={selectedDesign}
-          />
+        <div className="flex flex-col md:flex-row justify-between gap-8 w-full">
+          <div className="flex-1">
+            <DesignSelector onDesignChange={setSelectedDesign} />
+          </div>
+
+          <div className="flex-1">
+            <ExportButtonsWrapper
+              data={{
+                skills: resumeData!.skills, // Теперь совпадает с типом
+                projects: resumeData!.projects.map((p) => ({
+                  name: p.name,
+                  description: p.description,
+                })),
+              }}
+              username={username}
+              design={selectedDesign}
+            />
+          </div>
         </div>
       </section>
     </main>

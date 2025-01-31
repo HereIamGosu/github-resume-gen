@@ -1,6 +1,6 @@
 import { GithubForm } from "@/components/GithubForm";
 
-// 1. Константы интерфейса =============================================
+// Константы интерфейса
 const PAGE_STYLES = {
   main: "flex min-h-screen flex-col items-center justify-center p-4 md:p-8 lg:p-24 bg-gray-100",
   heading:
@@ -12,7 +12,7 @@ const CONTENT = {
   ariaLabel: "Generate your developer resume using GitHub data",
 } as const;
 
-// 2. Основной компонент ==============================================
+// Основной компонент
 export default function HomePage() {
   return (
     <main

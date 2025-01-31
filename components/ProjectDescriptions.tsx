@@ -10,15 +10,19 @@ import Link from "next/link";
 
 const STYLES = {
   container: "space-y-6",
-  heading: "text-2xl font-semibold mb-6 text-primary border-b pb-2 border-border/50",
+  heading:
+    "text-2xl font-semibold mb-6 text-primary border-b pb-2 border-border/50",
   card: "flex flex-col h-full shadow-sm hover:shadow-lg transition-all duration-300 border border-border/20 bg-card/50 backdrop-blur-sm",
   content: "prose prose-sm dark:prose-invert max-w-none text-foreground/90",
-  techBadge: "mr-2 mb-2 text-sm bg-accent/20 border border-border/30 rounded-lg px-3 py-1.5 shadow-sm",
+  techBadge:
+    "mr-2 mb-2 text-sm bg-accent/20 border border-border/30 rounded-lg px-3 py-1.5 shadow-sm",
   emptyState: "flex flex-col items-center justify-center py-12 space-y-4",
   expandButton:
     "mt-auto pt-4 w-full flex justify-center border-t border-border/20 bg-gradient-to-t from-background/80 via-background/50 to-transparent",
-  iconContainer: "flex items-center gap-2 text-muted-foreground/80 hover:text-primary transition-colors",
-  gradientBar: "absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 opacity-80",
+  iconContainer:
+    "flex items-center gap-2 text-muted-foreground/80 hover:text-primary transition-colors",
+  gradientBar:
+    "absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 opacity-80",
 } as const;
 
 const ProjectRow = ({ projects }: { projects: Project[] }) => {
@@ -44,17 +48,9 @@ const ProjectCard = ({
   htmlUrl,
   isExpanded,
   toggleExpand,
-}: Project & {
-  isExpanded: boolean;
-  toggleExpand: () => void;
-}) => {
-  const techMatch = description.match(/## Технологии\n([^#]+)/);
-  const technologies = techMatch?.[1]?.split(", ").filter(Boolean) || [];
-
-  const cleanDescription = description
-    .replace(/^# .+\n/, "")
-    .replace(/\n{2,}/g, "\n")
-    .trim();
+}: Project & { isExpanded: boolean; toggleExpand: () => void }) => {
+  const technologies = extractTechnologies(description);
+  const cleanDescription = cleanProjectDescription(description);
 
   return (
     <motion.div
@@ -99,10 +95,7 @@ const ProjectCard = ({
 
         <CardContent className="flex-1 relative">
           <motion.div
-            animate={{
-              height: isExpanded ? "auto" : 100,
-              opacity: 1,
-            }}
+            animate={{ height: isExpanded ? "auto" : 100, opacity: 1 }}
             initial={{ height: 100, opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
@@ -147,6 +140,20 @@ const ProjectCard = ({
       </Card>
     </motion.div>
   );
+};
+
+// Вынесение логики обработки технологий
+const extractTechnologies = (description: string): string[] => {
+  const techMatch = description.match(/## Технологии\n([^#]+)/);
+  return techMatch?.[1]?.split(", ").filter(Boolean) || [];
+};
+
+// Вынесение логики очистки описания
+const cleanProjectDescription = (description: string): string => {
+  return description
+    .replace(/^# .+\n/, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
 };
 
 export function ProjectDescriptions({

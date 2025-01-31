@@ -1,14 +1,13 @@
-// SkillsChart.tsx
 "use client";
 
 import type { Skill } from "@/types/skills";
+
 import { useState, useCallback } from "react";
 import {
   PieChart,
   Pie,
   Cell,
   ResponsiveContainer,
-  Legend,
   Tooltip,
   Sector,
 } from "recharts";
@@ -43,44 +42,39 @@ const CHART_CONFIG = {
   ],
 } as const;
 
-const renderActiveShape = (props: any) => {
-  const {
-    cx,
-    cy,
-    innerRadius,
-    outerRadius,
-    startAngle,
-    endAngle,
-    fill,
-    payload,
-    percent,
-  } = props;
-
-  return (
-    <g>
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius + CHART_CONFIG.dimensions.activeShapeOffset}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-        className="transition-all duration-300"
-      />
-      <text
-        x={cx}
-        y={cy}
-        dy={8}
-        textAnchor="middle"
-        fill="hsl(var(--primary))"
-        className="font-semibold"
-      >
-        {`${(percent * 100).toFixed(1)}%`}
-      </text>
-    </g>
-  );
-};
+const renderActiveShape = ({
+  cx,
+  cy,
+  innerRadius,
+  outerRadius,
+  startAngle,
+  endAngle,
+  fill,
+  percent,
+}: any) => (
+  <g>
+    <Sector
+      cx={cx}
+      cy={cy}
+      innerRadius={innerRadius}
+      outerRadius={outerRadius + CHART_CONFIG.dimensions.activeShapeOffset}
+      startAngle={startAngle}
+      endAngle={endAngle}
+      fill={fill}
+      className="transition-all duration-300"
+    />
+    <text
+      x={cx}
+      y={cy}
+      dy={8}
+      textAnchor="middle"
+      fill="hsl(var(--primary))"
+      className="font-semibold"
+    >
+      {`${(percent * 100).toFixed(1)}%`}
+    </text>
+  </g>
+);
 
 interface SkillsChartProps {
   skills: Record<string, number>;
@@ -91,15 +85,10 @@ export function SkillsChart({ skills }: SkillsChartProps) {
   const [hiddenSkills, setHiddenSkills] = useState<Set<string>>(new Set());
   const chartData = transformSkillsData(skills);
 
-  // Используем useCallback для стабильной ссылки
   const handleLegendClick = useCallback((skill: string) => {
     setHiddenSkills((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(skill)) {
-        newSet.delete(skill);
-      } else {
-        newSet.add(skill);
-      }
+      newSet.has(skill) ? newSet.delete(skill) : newSet.add(skill);
       return newSet;
     });
   }, []);

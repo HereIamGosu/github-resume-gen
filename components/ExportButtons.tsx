@@ -22,6 +22,19 @@ import { ResumeDocument } from "./ResumeDocument";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import dynamic from "next/dynamic";
+import { FileText, File, Download } from "lucide-react";
+import { ReloadIcon } from "@radix-ui/react-icons";
+
+const buttonStyle = (design: string) =>
+  `group flex items-center gap-2 transition-all h-10 px-6 rounded-lg 
+  shadow-sm hover:shadow-md border hover:translate-y-[-2px]
+  ${
+    design === "Minimalist"
+      ? "bg-background hover:bg-accent/20 border-border"
+      : design === "Classic"
+      ? "bg-blue-50 hover:bg-blue-100 border-blue-200"
+      : "bg-purple-50 hover:bg-purple-100 border-purple-200"
+  }`;
 
 // Мемоизированный компонент
 const ExportButtonsCore = memo(
@@ -29,26 +42,53 @@ const ExportButtonsCore = memo(
     exporting,
     error,
     handleExport,
+    design,
   }: {
     exporting: boolean;
     error: string | null;
     handleExport: (format: "PDF" | "DOCX") => void;
+    design: string;
   }) => (
-    <div className="space-y-2">
-      <h3 className="text-lg font-semibold text-gray-800">Export Resume</h3>
-      <div className="flex gap-2">
-        <Button onClick={() => handleExport("PDF")} disabled={exporting}>
-          {exporting ? "Exporting..." : "PDF"}
-        </Button>
-        <Button onClick={() => handleExport("DOCX")} disabled={exporting}>
-          {exporting ? "Exporting..." : "DOCX"}
-        </Button>
+    <div className="space-y-4 w-full h-full">
+      <div className="flex flex-col gap-3">
+        <h3 className="text-lg font-semibold text-foreground/90">
+          Export Options
+        </h3>
+        <div className="flex gap-3 flex-col sm:flex-row">
+          <button
+            onClick={() => handleExport("PDF")}
+            disabled={exporting}
+            className={buttonStyle(design)}
+          >
+            <FileText className="h-5 w-5 text-red-600" />
+            <span className="text-foreground/90">PDF</span>
+            <Download className="h-4 w-4 ml-1 opacity-70 group-hover:opacity-100" />
+          </button>
+
+          <button
+            onClick={() => handleExport("DOCX")}
+            disabled={exporting}
+            className={buttonStyle(design)}
+          >
+            <File className="h-5 w-5 text-blue-600" />
+            <span className="text-foreground/90">Word</span>
+            <Download className="h-4 w-4 ml-1 opacity-70 group-hover:opacity-100" />
+          </button>
+        </div>
       </div>
+
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTitle>Export Error</AlertTitle>
+          <AlertDescription className="text-sm">{error}</AlertDescription>
         </Alert>
+      )}
+
+      {exporting && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <ReloadIcon className="h-4 w-4 animate-spin" />
+          <span>Generating file...</span>
+        </div>
       )}
     </div>
   )
@@ -119,6 +159,7 @@ export function ExportButtons({ data, username, design }: ExportButtonsProps) {
       exporting={exporting}
       error={error}
       handleExport={handleExport}
+      design={design} // Передаем текущий дизайн
     />
   );
 }
